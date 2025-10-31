@@ -4,7 +4,7 @@ import os
 from flask import Flask, request
 
 # 🔐 Токен и ID администратора
-BOT_TOKEN = 'ТВОЙ_ТОКЕН_СЮДА'
+BOT_TOKEN = '7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE'
 ADMIN_ID = 7518403875  # замени при необходимости
 
 bot = telebot.TeleBot(BOT_TOKEN)
