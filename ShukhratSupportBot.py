@@ -7,7 +7,7 @@ load_dotenv()
 # === НАСТРОЙКА ===
 BOT_TOKEN = "7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"  # 👉 вставь сюда свой токен
 ADMIN_ID = 306835182       # 👉 сюда свой Telegram ID (число)
-WEBHOOK_URL = "https://ТВОЙ-РЕНДЕР-УРЛ.onrender.com/webhook"  # 👈 замени на свой URL
+WEBHOOK_URL = "https://shukhratsupportbot.onrender.com"  # 👈 замени на свой URL
 
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
