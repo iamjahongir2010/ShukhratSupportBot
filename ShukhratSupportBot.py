@@ -3,8 +3,8 @@ from telebot import types
 from flask import Flask, request
 
 # === НАСТРОЙКА ===
-BOT_TOKEN = "ТОКЕН_БОТА"  # 👉 вставь сюда свой токен
-ADMIN_ID = 123456789       # 👉 сюда свой Telegram ID (число)
+BOT_TOKEN = "7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"  # 👉 вставь сюда свой токен
+ADMIN_ID = 306835182       # 👉 сюда свой Telegram ID (число)
 WEBHOOK_URL = "https://ТВОЙ-РЕНДЕР-УРЛ.onrender.com/webhook"  # 👈 замени на свой URL
 
 bot = telebot.TeleBot(BOT_TOKEN)
