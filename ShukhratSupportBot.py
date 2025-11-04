@@ -1,7 +1,6 @@
 # main.py — Telegram-бот для Render.com (один файл)
 from flask import Flask, request
 import telebot
-import os
 import threading
 from telebot import types
 
@@ -9,7 +8,7 @@ from telebot import types
 app = Flask(__name__)
 
 # === ТОКЕН ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ (Render) ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"
 if not BOT_TOKEN:
     print("ОШИБКА: Установите BOT_TOKEN в переменных окружения на Render!")
     exit(1)
@@ -17,7 +16,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # === КОНСТАНТЫ ===
-ADMIN_ID = 7518403875
+ADMIN_ID = 306835182
 
 # === ПРАЙС-ЛИСТ ===
 PRICES = {
