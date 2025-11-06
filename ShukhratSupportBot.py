@@ -1,8 +1,7 @@
-# main.py — Исправлены: кнопки не исчезают + бот не зависает
+# main.py — БЕЗ ЗАДЕРЖКИ, кнопки остаются, бот не зависает
 from flask import Flask, request
 import telebot
 import os
-import threading
 from telebot import types
 
 app = Flask(__name__)
@@ -16,7 +15,7 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # === КОНСТАНТЫ ===
-ADMIN_ID = 7518403875
+ADMIN_ID = 306835182
 
 # === ПРАЙС ===
 PRICES = {
@@ -35,19 +34,14 @@ PRICES = {
 # === ХРАНИЛИЩЕ ===
 user_data = {}
 
-# === УТИЛИТА: Просьба + повтор вопроса с клавиатурой ===
+# === УТИЛИТА: Ошибка + мгновенный повтор с кнопками ===
 def ask_use_buttons_and_repeat(message, repeat_func, *args):
     bot.send_message(
         message.chat.id,
-        "Пожалуйста, отвечайте с помощью кнопок.",
-        reply_markup=types.ReplyKeyboardRemove()
+        "Пожалуйста, отвечайте с помощью кнопок ниже.",
+        parse_mode='HTML'
     )
-    # С задержкой — повторяем вопрос с клавиатурой
-    def delayed():
-        import time
-        time.sleep(1.5)
-        repeat_func(message.chat.id, *args)
-    threading.Thread(target=delayed, daemon=True).start()
+    repeat_func(message.chat.id, *args)  # СРАЗУ повторяем
 
 # === ОПИСАНИЯ ===
 def get_therapy_description(place, is_offline=False):
@@ -105,7 +99,7 @@ def ask_place(message):
     markup.add("Таджикистан", "Страны СНГ", "Другое")
     bot.send_message(message.chat.id, "Откуда вы?", reply_markup=markup)
 
-# === ЗАЩИТА: МЕСТО ===
+# === ГЛАВНЫЙ ХЕНДЛЕР ===
 @bot.message_handler(func=lambda m: True)
 def handle_any(message):
     user_id = message.from_user.id
@@ -328,8 +322,6 @@ def set_webhook():
     return f"Webhook {'установлен' if success else 'ошибка'}: {url}"
 
 def setup_webhook():
-    import time
-    time.sleep(3)
     hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
     if hostname:
         url = f"https://{hostname}{WEBHOOK_PATH}"
@@ -338,5 +330,5 @@ def setup_webhook():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    threading.Thread(target=setup_webhook, daemon=True).start()
+    setup_webhook()
     app.run(host='0.0.0.0', port=port)
