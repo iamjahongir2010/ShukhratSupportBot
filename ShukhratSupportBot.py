@@ -1,4 +1,4 @@
-# main.py — Telegram-бот с упрощённым гипнозом и ссылкой на пользователя
+# main.py — Исправлены: кнопки не исчезают + бот не зависает
 from flask import Flask, request
 import telebot
 import os
@@ -7,7 +7,7 @@ from telebot import types
 
 app = Flask(__name__)
 
-# === ТОКЕН ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ ===
+# === ТОКЕН ===
 BOT_TOKEN = "7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"
 if not BOT_TOKEN:
     print("ОШИБКА: Установите BOT_TOKEN в переменных окружения!")
@@ -16,23 +16,17 @@ if not BOT_TOKEN:
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # === КОНСТАНТЫ ===
-ADMIN_ID = 306835182
+ADMIN_ID = 7518403875
 
-# === ПРАЙС-ЛИСТ (обновлён) ===
+# === ПРАЙС ===
 PRICES = {
     'online_psych': {'Таджикистан': '150 смн/час', 'СНГ': '2500 руб/час', 'Другое': '35$ США/час'},
     'business_online': {'Таджикистан': '300 смн/час', 'СНГ': '3500 руб/час', 'Другое': '70$ США/час'},
-    'hypnosis_online': {
-        'Таджикистан': '500 смн/1-1.5 часа',
-        'СНГ': '5000 руб/час',
-        'Другое': '100$ США/час'
-    },
+    'hypnosis_online': {'Таджикистан': '500 смн/1-1.5 часа', 'СНГ': '5000 руб/час', 'Другое': '100$ США/час'},
     'offline_individual': {'Таджикистан': '150 смн/час'},
     'offline_family': {'Таджикистан': '250 смн/час (2 человека)'},
     'offline_home': {'Таджикистан': '100 смн + 250 смн/час'},
-    'hypnosis_offline': {  # Единая кнопка, разные цены
-        'Таджикистан': '600 смн/час | 800 смн/1-2 ч | 1000 смн/2-3 ч'
-    },
+    'hypnosis_offline': {'Таджикистан': '600 смн/час | 800 смн/1-2 ч | 1000 смн/2-3 ч'},
     'course_growth': {'Таджикистан': '2500 смн/весь курс (10 уроков)', 'СНГ': '35000 руб/весь курс', 'Другое': '450$ США/весь курс'},
     'business_offline': {'Таджикистан': '300 смн/час (до 3 человек)'},
     'group_training': {'Таджикистан': '50 смн с человека (мин. 1000 смн с группы)/1.5-2 часа'}
@@ -41,39 +35,44 @@ PRICES = {
 # === ХРАНИЛИЩЕ ===
 user_data = {}
 
-# === УТИЛИТА: Просьба использовать кнопки ===
-def ask_use_buttons(message, repeat_func, *args):
+# === УТИЛИТА: Просьба + повтор вопроса с клавиатурой ===
+def ask_use_buttons_and_repeat(message, repeat_func, *args):
     bot.send_message(
         message.chat.id,
         "Пожалуйста, отвечайте с помощью кнопок.",
         reply_markup=types.ReplyKeyboardRemove()
     )
-    threading.Thread(target=lambda: repeat_func(message.chat.id, *args)).start()
+    # С задержкой — повторяем вопрос с клавиатурой
+    def delayed():
+        import time
+        time.sleep(1.5)
+        repeat_func(message.chat.id, *args)
+    threading.Thread(target=delayed, daemon=True).start()
 
 # === ОПИСАНИЯ ===
 def get_therapy_description(place, is_offline=False):
     if place == "Таджикистан" and is_offline:
         return (
-            "<b>Офлайн-услуги (живая встреча):</b>\n\n"
-            "• <b>Индивидуальный сеанс</b> — личная консультация\n"
-            "• <b>Семейный сеанс (2 чел)</b> — для пары или семьи\n"
-            "• <b>Сеанс на дому</b> — выезд к вам\n"
+            "<b>Офлайн-услуги:</b>\n\n"
+            "• Индивидуальный сеанс\n"
+            "• Семейный сеанс (2 чел)\n"
+            "• Сеанс на дому\n"
             "• <b>Регрессивный гипноз</b> — 1, 1-2 или 2-3 часа\n"
-            "• <b>Бизнес-консультация офлайн</b> — до 3 человек\n"
-            "• <b>Групповой тренинг</b> — от 3 человек, 1.5–2 часа\n\n"
-            "<i>Цены будут показаны после выбора услуги.</i>"
+            "• Бизнес-консультация офлайн\n"
+            "• Групповой тренинг\n\n"
+            "<i>Цены после выбора.</i>"
         )
     else:
         return (
             "<b>Онлайн-услуги:</b>\n\n"
-            "• <b>Консультация (психология)</b> — личная помощь, поддержка\n"
-            "• <b>Бизнес-консультация</b> — мотивация, стратегия, решения\n"
-            "• <b>Регрессивный гипноз</b> — работа с подсознанием\n"
-            "• <b>Курс личностного роста</b> — 10 уроков для развития\n\n"
-            "<i>Цены будут показаны после выбора услуги.</i>"
+            "• Консультация (психология)\n"
+            "• Бизнес-консультация\n"
+            "• <b>Регрессивный гипноз</b>\n"
+            "• Курс личностного роста\n\n"
+            "<i>Цены после выбора.</i>"
         )
 
-# === ХЕНДЛЕРЫ ===
+# === СТАРТ ===
 @bot.message_handler(commands=['start'])
 def start(message):
     user_id = message.from_user.id
@@ -85,9 +84,7 @@ def start(message):
     bot.send_message(
         message.chat.id,
         "Привет!\n\n"
-        "Я — бот-помощник для записи на сеансы к психологу.\n"
-        "Я помогу вам быстро выбрать услугу и оставить заявку.\n\n"
-        "Для записи мне понадобится немного информации.\n"
+        "Я — бот для записи на сеансы к психологу.\n"
         "<b>Готовы начать?</b>",
         parse_mode='HTML',
         reply_markup=markup
@@ -95,9 +92,10 @@ def start(message):
 
 @bot.message_handler(func=lambda m: m.text == "Нет, не готов")
 def not_ready(message):
-    bot.send_message(message.chat.id, "Хорошо! Когда будете готовы — нажмите /start",
+    bot.send_message(message.chat.id, "Хорошо! Нажмите /start, когда будете готовы.",
                      reply_markup=types.ReplyKeyboardRemove())
 
+# === ГОТОВНОСТЬ ===
 @bot.message_handler(func=lambda m: m.text == "Да, готов")
 def ask_place(message):
     user_id = message.from_user.id
@@ -107,103 +105,51 @@ def ask_place(message):
     markup.add("Таджикистан", "Страны СНГ", "Другое")
     bot.send_message(message.chat.id, "Откуда вы?", reply_markup=markup)
 
-# === ЗАЩИТА: Место ===
+# === ЗАЩИТА: МЕСТО ===
 @bot.message_handler(func=lambda m: True)
-def catch_wrong_place(message):
-    user_id = message.from_user.id
-    if user_id in user_data and 'place' not in user_data[user_id]:
-        if message.text not in ["Таджикистан", "Страны СНГ", "Другое"]:
-            ask_use_buttons(message, ask_place)
-            return
-    handle_place(message)
-
-def handle_place(message):
-    user_id = message.from_user.id
-    place = message.text
-    if place not in ["Таджикистан", "Страны СНГ", "Другое"]:
-        return
-    user_data[user_id]['place'] = place
-
-    if place == "Таджикистан":
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add("Онлайн", "Офлайн (живая встреча)")
-        bot.send_message(message.chat.id, "Онлайн или офлайн?", reply_markup=markup)
-    else:
-        ask_therapy(message.chat.id, place)
-
-# === ЗАЩИТА: Онлайн/Офлайн ===
-@bot.message_handler(func=lambda m: True)
-def catch_wrong_mode(message):
-    user_id = message.from_user.id
-    if user_id in user_data and 'place' in user_data[user_id] and user_data[user_id]['place'] == "Таджикистан":
-        if 'mode' not in user_data[user_id]:
-            if message.text not in ["Онлайн", "Офлайн (живая встреча)"]:
-                ask_use_buttons(message, lambda cid: (
-                    types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-                    .add("Онлайн", "Офлайн (живая встреча)"),
-                    bot.send_message(cid, "Онлайн или офлайн?", reply_markup=_)
-                )[1], message.chat.id)
-                return
-    handle_mode(message)
-
-def handle_mode(message):
-    user_id = message.from_user.id
-    mode = message.text
-    if mode not in ["Онлайн", "Офлайн (живая встреча)"]:
-        return
-    user_data[user_id]['mode'] = mode
-    place = user_data[user_id]['place']
-
-    if mode == "Онлайн":
-        ask_therapy(message.chat.id, place)
-    else:
-        show_offline_therapies(message.chat.id)
-
-# === ВЫБОР УСЛУГИ ===
-def ask_therapy(chat_id, place):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add("Онлайн консультация (психология)")
-    markup.add("Бизнес-консультация (онлайн)")
-    markup.add("Регрессивный гипноз (онлайн)")  # ← одна кнопка
-    markup.add("Курс личностного роста")
-    markup.add("Я не знаю, что есть что")
-    bot.send_message(chat_id, "Какую услугу вы хотите?", reply_markup=markup)
-
-def show_offline_therapies(chat_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    markup.add("Офлайн: индивидуальный сеанс")
-    markup.add("Офлайн: семейный сеанс (2 чел)")
-    markup.add("Офлайн: сеанс на дому")
-    markup.add("Регрессивный гипноз (офлайн)")  # ← одна кнопка
-    markup.add("Бизнес-консультация офлайн (до 3 чел)")
-    markup.add("Групповой тренинг")
-    markup.add("Я не знаю, что есть что")
-    bot.send_message(chat_id, "Выберите офлайн-услугу:", reply_markup=markup)
-
-# === "Я не знаю" ===
-@bot.message_handler(func=lambda m: "Я не знаю, что есть что" in m.text)
-def send_descriptions(message):
+def handle_any(message):
     user_id = message.from_user.id
     if user_id not in user_data:
-        bot.send_message(message.chat.id, "Начните с /start")
         return
 
-    place = user_data[user_id].get('place', 'Таджикистан')
-    is_offline = (place == "Таджикистан" and user_data[user_id].get('mode') == "Офлайн (живая встреча)")
+    state = user_data[user_id]
 
-    desc = get_therapy_description(place, is_offline)
-    bot.send_message(message.chat.id, desc, parse_mode='HTML')
+    # 1. Ждём место
+    if 'place' not in state:
+        if message.text in ["Таджикистан", "Страны СНГ", "Другое"]:
+            state['place'] = message.text
+            if message.text == "Таджикистан":
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+                markup.add("Онлайн", "Офлайн (живая встреча)")
+                bot.send_message(message.chat.id, "Онлайн или офлайн?", reply_markup=markup)
+            else:
+                ask_therapy(message.chat.id, message.text)
+        else:
+            ask_use_buttons_and_repeat(message, ask_place)
+        return
 
-    if is_offline:
-        show_offline_therapies(message.chat.id)
-    else:
-        ask_therapy(message.chat.id, place)
+    # 2. Ждём режим (Таджикистан)
+    if state['place'] == "Таджикистан" and 'mode' not in state:
+        if message.text in ["Онлайн", "Офлайн (живая встреча)"]:
+            state['mode'] = message.text
+            if message.text == "Онлайн":
+                ask_therapy(message.chat.id, state['place'])
+            else:
+                show_offline_therapies(message.chat.id)
+        else:
+            ask_use_buttons_and_repeat(message, lambda cid: (
+                types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+                .add("Онлайн", "Офлайн (живая встреча)"),
+                bot.send_message(cid, "Онлайн или офлайн?", reply_markup=_)
+            )[1], message.chat.id)
+        return
 
-# === ЗАЩИТА: Выбор услуги ===
-@bot.message_handler(func=lambda m: True)
-def catch_wrong_therapy(message):
-    user_id = message.from_user.id
-    if user_id in user_data and 'place' in user_data[user_id]:
+    # 3. Ждём терапию
+    if 'therapy' not in state:
+        if "Я не знаю, что есть что" in message.text:
+            send_descriptions(message)
+            return
+
         expected = [
             "Онлайн консультация (психология)", "Бизнес-консультация (онлайн)",
             "Регрессивный гипноз (онлайн)", "Курс личностного роста",
@@ -213,11 +159,51 @@ def catch_wrong_therapy(message):
         ]
         if any(opt in message.text for opt in expected):
             handle_therapy(message)
-        elif "Я не знаю, что есть что" not in message.text:
-            if 'mode' in user_data[user_id] and user_data[user_id]['mode'] == "Офлайн (живая встреча)":
-                ask_use_buttons(message, show_offline_therapies, message.chat.id)
+        else:
+            if state.get('mode') == "Офлайн (живая встреча)":
+                ask_use_buttons_and_repeat(message, show_offline_therapies, message.chat.id)
             else:
-                ask_use_buttons(message, ask_therapy, message.chat.id, user_data[user_id]['place'])
+                ask_use_buttons_and_repeat(message, ask_therapy, message.chat.id, state['place'])
+        return
+
+# === ВЫБОР УСЛУГИ ===
+def ask_therapy(chat_id, place):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("Онлайн консультация (психология)")
+    markup.add("Бизнес-консультация (онлайн)")
+    markup.add("Регрессивный гипноз (онлайн)")
+    markup.add("Курс личностного роста")
+    markup.add("Я не знаю, что есть что")
+    bot.send_message(chat_id, "Какую услугу вы хотите?", reply_markup=markup)
+
+def show_offline_therapies(chat_id):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup.add("Офлайн: индивидуальный сеанс")
+    markup.add("Офлайн: семейный сеанс (2 чел)")
+    markup.add("Офлайн: сеанс на дому")
+    markup.add("Регрессивный гипноз (офлайн)")
+    markup.add("Бизнес-консультация офлайн (до 3 чел)")
+    markup.add("Групповой тренинг")
+    markup.add("Я не знаю, что есть что")
+    bot.send_message(chat_id, "Выберите офлайн-услугу:", reply_markup=markup)
+
+@bot.message_handler(func=lambda m: "Я не знаю, что есть что" in m.text)
+def send_descriptions(message):
+    user_id = message.from_user.id
+    if user_id not in user_data or 'place' not in user_data[user_id]:
+        bot.send_message(message.chat.id, "Начните с /start")
+        return
+
+    place = user_data[user_id]['place']
+    is_offline = (place == "Таджикистан" and user_data[user_id].get('mode') == "Офлайн (живая встреча)")
+
+    desc = get_therapy_description(place, is_offline)
+    bot.send_message(message.chat.id, desc, parse_mode='HTML')
+
+    if is_offline:
+        show_offline_therapies(message.chat.id)
+    else:
+        ask_therapy(message.chat.id, place)
 
 def handle_therapy(message):
     user_id = message.from_user.id
@@ -229,16 +215,16 @@ def handle_therapy(message):
 
     if "Онлайн консультация (психология)" in therapy_text:
         therapy_key = 'online_psych'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан', '—'))
+        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
     elif "Бизнес-консультация (онлайн)" in therapy_text:
         therapy_key = 'business_online'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан', '—'))
+        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
     elif "Регрессивный гипноз (онлайн)" in therapy_text:
         therapy_key = 'hypnosis_online'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан', '—'))
+        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
     elif "Курс личностного роста" in therapy_text:
         therapy_key = 'course_growth'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан', '—'))
+        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
     elif "индивидуальный сеанс" in therapy_text:
         therapy_key = 'offline_individual'
         price = PRICES[therapy_key]['Таджикистан']
@@ -250,7 +236,7 @@ def handle_therapy(message):
         price = PRICES[therapy_key]['Таджикистан']
     elif "Регрессивный гипноз (офлайн)" in therapy_text:
         therapy_key = 'hypnosis_offline'
-        price = PRICES[therapy_key]['Таджикистан']  # все цены сразу
+        price = PRICES[therapy_key]['Таджикистан']
     elif "Бизнес-консультация офлайн" in therapy_text:
         therapy_key = 'business_offline'
         price = PRICES[therapy_key]['Таджикистан']
@@ -273,7 +259,7 @@ def handle_therapy(message):
         f"Вы из: <b>{place}</b>\n"
         f"Услуга: <b>{therapy_text}</b>\n"
         f"Цена: <b>{price}</b>\n\n"
-        f"Если всё верно — отправьте контакт:",
+        f"Отправьте контакт:",
         parse_mode='HTML',
         reply_markup=markup
     )
@@ -311,14 +297,12 @@ def handle_contact(message):
 
     bot.send_message(
         message.chat.id,
-        "Всё готово!\n\n"
-        "Скоро с вами свяжутся для уточнения времени и деталей.",
+        "Спасибо! Скоро с вами свяжутся.",
         parse_mode='HTML',
         reply_markup=types.ReplyKeyboardRemove()
     )
 
-    if user_id in user_data:
-        del user_data[user_id]
+    del user_data[user_id]
 
 # === WEBHOOK ===
 WEBHOOK_PATH = f"/webhook/{BOT_TOKEN.split(':')[0]}"
@@ -343,7 +327,6 @@ def set_webhook():
     success = bot.set_webhook(url=url)
     return f"Webhook {'установлен' if success else 'ошибка'}: {url}"
 
-# === АВТО-УСТАНОВКА WEBHOOK ===
 def setup_webhook():
     import time
     time.sleep(3)
@@ -353,7 +336,6 @@ def setup_webhook():
         bot.remove_webhook()
         bot.set_webhook(url=url)
 
-# === ЗАПУСК ===
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     threading.Thread(target=setup_webhook, daemon=True).start()
