@@ -1,4 +1,4 @@
-# main.py — БЕЗ ЗАДЕРЖКИ, кнопки остаются, бот не зависает
+# main.py — Финальная версия с актуальными ценами
 from flask import Flask, request
 import telebot
 import os
@@ -17,31 +17,47 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # === КОНСТАНТЫ ===
 ADMIN_ID = 7518403875
 
-# === ПРАЙС ===
+# === ОБНОВЛЁННЫЙ ПРАЙС ===
 PRICES = {
-    'online_psych': {'Таджикистан': '150 смн/час', 'СНГ': '2500 руб/час', 'Другое': '35$ США/час'},
-    'business_online': {'Таджикистан': '300 смн/час', 'СНГ': '3500 руб/час', 'Другое': '70$ США/час'},
-    'hypnosis_online': {'Таджикистан': '500 смн/1-1.5 часа', 'СНГ': '5000 руб/час', 'Другое': '100$ США/час'},
-    'offline_individual': {'Таджикистан': '150 смн/час'},
-    'offline_family': {'Таджикистан': '250 смн/час (2 человека)'},
-    'offline_home': {'Таджикистан': '100 смн + 250 смн/час'},
-    'hypnosis_offline': {'Таджикистан': '600 смн/час | 800 смн/1-2 ч | 1000 смн/2-3 ч'},
-    'course_growth': {'Таджикистан': '2500 смн/весь курс (10 уроков)', 'СНГ': '35000 руб/весь курс', 'Другое': '450$ США/весь курс'},
-    'business_offline': {'Таджикистан': '300 смн/час (до 3 человек)'},
-    'group_training': {'Таджикистан': '50 смн с человека (мин. 1000 смн с группы)/1.5-2 часа'}
+    'online_psych': {
+        'Таджикистан': '150 сомони/час',
+        'СНГ': '2500 руб/час',
+        'Другое': '35$/час'
+    },
+    'business_online': {
+        'Таджикистан': '300 сомони (1–3 человека)',   # исправлено
+        'СНГ': '3500 руб/час',
+        'Другое': '70$/час'
+    },
+    'hypnosis_online': {
+        'Таджикистан': '500 сомони/1 час',            # теперь строго 1 час
+        'СНГ': '5000 руб/час',
+        'Другое': '100$/час'                          # добавлено "час"
+    },
+    'offline_individual': {'Таджикистан': '150 сомони/час'},
+    'offline_family': {'Таджикистан': '250 сомони/час (2 человека)'},
+    'offline_home': {'Таджикистан': '100 сомони + 250 сомони/час'},
+    'hypnosis_offline': {'Таджикистан': '600 сомони/час | 800 сомони/1-2 ч | 1000 сомони/2-3 ч'},
+    'course_growth': {
+        'Таджикистан': '2500 сомони/весь курс (10 уроков)',
+        'СНГ': '35000 руб/весь курс',
+        'Другое': '450$/весь курс (10 уроков-презентаций)'  # как просил
+    },
+    'business_offline': {'Таджикистан': '300 сомони/час (до 3 человек)'},
+    'group_training': {'Таджикистан': '50 сомони с человека (мин. 1000 сомони с группы)/1.5-2 часа'}
 }
 
 # === ХРАНИЛИЩЕ ===
 user_data = {}
 
-# === УТИЛИТА: Ошибка + мгновенный повтор с кнопками ===
+# === УТИЛИТА: Ошибка + мгновенный повтор ===
 def ask_use_buttons_and_repeat(message, repeat_func, *args):
     bot.send_message(
         message.chat.id,
         "Пожалуйста, отвечайте с помощью кнопок ниже.",
         parse_mode='HTML'
     )
-    repeat_func(message.chat.id, *args)  # СРАЗУ повторяем
+    repeat_func(message.chat.id, *args)
 
 # === ОПИСАНИЯ ===
 def get_therapy_description(place, is_offline=False):
@@ -61,8 +77,8 @@ def get_therapy_description(place, is_offline=False):
             "<b>Онлайн-услуги:</b>\n\n"
             "• Консультация (психология)\n"
             "• Бизнес-консультация\n"
-            "• <b>Регрессивный гипноз</b>\n"
-            "• Курс личностного роста\n\n"
+            "• <b>Регрессивный гипноз</b> — 1 час\n"
+            "• Курс личностного роста — 10 уроков-презентаций\n\n"
             "<i>Цены после выбора.</i>"
         )
 
@@ -89,7 +105,6 @@ def not_ready(message):
     bot.send_message(message.chat.id, "Хорошо! Нажмите /start, когда будете готовы.",
                      reply_markup=types.ReplyKeyboardRemove())
 
-# === ГОТОВНОСТЬ ===
 @bot.message_handler(func=lambda m: m.text == "Да, готов")
 def ask_place(message):
     user_id = message.from_user.id
@@ -209,16 +224,16 @@ def handle_therapy(message):
 
     if "Онлайн консультация (психология)" in therapy_text:
         therapy_key = 'online_psych'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
+        price = PRICES[therapy_key][place] if place in PRICES[therapy_key] else PRICES[therapy_key]['Таджикистан']
     elif "Бизнес-консультация (онлайн)" in therapy_text:
         therapy_key = 'business_online'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
+        price = PRICES[therapy_key][place] if place in PRICES[therapy_key] else PRICES[therapy_key]['Таджикистан']
     elif "Регрессивный гипноз (онлайн)" in therapy_text:
         therapy_key = 'hypnosis_online'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
+        price = PRICES[therapy_key][place] if place in PRICES[therapy_key] else PRICES[therapy_key]['Таджикистан']
     elif "Курс личностного роста" in therapy_text:
         therapy_key = 'course_growth'
-        price = PRICES[therapy_key].get(place, PRICES[therapy_key].get('Таджикистан'))
+        price = PRICES[therapy_key][place] if place in PRICES[therapy_key] else PRICES[therapy_key]['Таджикистан']
     elif "индивидуальный сеанс" in therapy_text:
         therapy_key = 'offline_individual'
         price = PRICES[therapy_key]['Таджикистан']
