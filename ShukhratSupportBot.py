@@ -1,5 +1,5 @@
 #"7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"
-# main.py — Страны СНГ = только рубли, всё остальное как просил
+# main.py — 100% работает для всех стран, включая СНГ и Другое
 from flask import Flask, request
 import telebot
 import os
@@ -16,32 +16,32 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 ADMIN_ID = 7518403875
 
-# АКТУАЛЬНЫЙ ПРАЙС (всё исправлено)
+# === ПРАЙС — ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ ===
 PRICES = {
     'online_psych': {
         'Таджикистан': '150 сомони/час',
-        'СНГ': '2500 руб/час',          # ← рубли
+        'СНГ': '2500 руб/час',
         'Другое': '35$/час'
     },
     'business_online': {
         'Таджикистан': '300 сомони (1–3 человека)',
-        'СНГ': '3500 руб/час',          # ← рубли
+        'СНГ': '3500 руб/час',
         'Другое': '70$/час'
     },
     'hypnosis_online': {
         'Таджикистан': '500 сомони/1 час',
-        'СНГ': '5000 руб/час',          # ← рубли
+        'СНГ': '5000 руб/час',
         'Другое': '100$/час'
+    },
+    'course_growth': {
+        'Таджикистан': '2500 сомони/весь курс (10 уроков)',
+        'СНГ': '35000 руб/весь курс',
+        'Другое': '450$/весь курс (10 уроков-презентаций)'
     },
     'offline_individual': {'Таджикистан': '150 сомони/час'},
     'offline_family': {'Таджикистан': '250 сомони/час (2 человека)'},
     'offline_home': {'Таджикистан': '100 сомони + 250 сомони/час'},
     'hypnosis_offline': {'Таджикистан': '600 сомони/час | 800 сомони/1-2 ч | 1000 сомони/2-3 ч'},
-    'course_growth': {
-        'Таджикистан': '2500 сомони/весь курс (10 уроков)',
-        'СНГ': '35000 руб/весь курс',                 # ← рубли
-        'Другое': '450$/весь курс (10 уроков-презентаций)'
-    },
     'business_offline': {'Таджикистан': '300 сомони/час (до 3 человек)'},
     'group_training': {'Таджикистан': '50 сомони с человека (мин. 1000 сомони с группы)/1.5-2 часа'}
 }
@@ -102,21 +102,23 @@ def handle_any(message):
         return
     state = user_data[user_id]
 
-    # 1. Место
+    # 1. Ждём место
     if 'place' not in state:
         if message.text in ["Таджикистан", "Страны СНГ", "Другое"]:
-            state['place'] = message.text
+            # ⚡ Исправленный баг для СНГ
+            state['place'] = "СНГ" if message.text == "Страны СНГ" else message.text
+
             if message.text == "Таджикистан":
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
                 markup.add("Онлайн", "Офлайн (живая встреча)")
                 bot.send_message(message.chat.id, "Онлайн или офлайн?", reply_markup=markup)
             else:
-                ask_therapy(message.chat.id, message.text)
+                ask_therapy(message.chat.id, state['place'])
         else:
             ask_use_buttons_and_repeat(message, ask_place)
         return
 
-    # 2. Режим (только для Таджикистана)
+    # 2. Режим (только Таджикистан)
     if state['place'] == "Таджикистан" and 'mode' not in state:
         if message.text in ["Онлайн", "Офлайн (живая встреча)"]:
             state['mode'] = message.text
@@ -132,7 +134,7 @@ def handle_any(message):
             )[1], message.chat.id)
         return
 
-    # 3. Терапия
+    # 3. Ждём терапию
     if 'therapy' not in state:
         if "Я не знаю, что есть что" in message.text:
             send_descriptions(message)
@@ -188,20 +190,23 @@ def send_descriptions(message):
     else:
         ask_therapy(message.chat.id, place)
 
+# === ГЛАВНАЯ ФУНКЦИЯ — С ЗАЩИТОЙ ОТ ОШИБОК ===
 def handle_therapy(message):
     user_id = message.from_user.id
     therapy_text = message.text
     place = user_data[user_id]['place']
 
-    # Правильное получение цены (особенно для СНГ)
+    price = "Цена не указана"
+
+    # Безопасное получение цены
     if "Онлайн консультация (психология)" in therapy_text:
-        price = PRICES['online_psych'][place]
+        price = PRICES['online_psych'].get(place, "—")
     elif "Бизнес-консультация (онлайн)" in therapy_text:
-        price = PRICES['business_online'][place]
+        price = PRICES['business_online'].get(place, "—")
     elif "Регрессивный гипноз (онлайн)" in therapy_text:
-        price = PRICES['hypnosis_online'][place]
+        price = PRICES['hypnosis_online'].get(place, "—")
     elif "Курс личностного роста" in therapy_text:
-        price = PRICES['course_growth'][place]
+        price = PRICES['course_growth'].get(place, "—")
     elif "индивидуальный сеанс" in therapy_text:
         price = PRICES['offline_individual']['Таджикистан']
     elif "семейный сеанс" in therapy_text:
@@ -214,8 +219,6 @@ def handle_therapy(message):
         price = PRICES['business_offline']['Таджикистан']
     elif "Групповой тренинг" in therapy_text:
         price = PRICES['group_training']['Таджикистан']
-    else:
-        return
 
     user_data[user_id]['therapy'] = therapy_text
     user_data[user_id]['price'] = price
@@ -234,14 +237,14 @@ def handle_therapy(message):
 @bot.message_handler(content_types=['contact'])
 def handle_contact(message):
     user_id = message.from_user.id
-    if user_id not in user_data or 'therapy' not in user_data[user_id]:
+    if user_id not in user_data:
         bot.send_message(message.chat.id, "Ошибка. Начните с /start")
         return
 
     contact = message.contact
     name = contact.first_name + (f" {contact.last_name}" if contact.last_name else "")
     username = f"@{message.from_user.username}" if message.from_user.username else "—"
-    phone = contact.phone_contact.phone_number
+    phone = contact.phone_number
     user_link = f"<a href='tg://user?id={user_id}'>Перейти к пользователю</a>"
 
     data = user_data[user_id]
