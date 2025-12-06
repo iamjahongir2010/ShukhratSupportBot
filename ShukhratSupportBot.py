@@ -12,7 +12,7 @@ if not BOT_TOKEN:
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-ADMIN_ID = 306835182
+ADMIN_ID = 7518403875
 
 PRICES = {
     'online_psych': {'Таджикистан': '150 смн/час', 'СНГ': '2500 руб/час', 'Другое': '35$ США/час'},
