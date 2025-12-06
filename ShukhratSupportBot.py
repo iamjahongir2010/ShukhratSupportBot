@@ -7,7 +7,7 @@ from telebot import types
 app = Flask(__name__)
 
 # === ТОКЕН ===
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = "7547480592:AAGI74gexvju7JooRE2PkfsHIOaE_mOfXKE"
 if not BOT_TOKEN:
     print("ОШИБКА: Установите BOT_TOKEN в переменных окружения!")
     exit(1)
