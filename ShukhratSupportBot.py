@@ -16,7 +16,7 @@ if not BOT_TOKEN:
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-ADMIN_ID = 7518403875
+ADMIN_ID = 306835182
 
 # === ПРАЙС ===
 PRICES = {
