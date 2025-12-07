@@ -92,7 +92,7 @@ def start(message):
         message.chat.id,
         "👋 Привет! \n\n"
         "🙂 Я — помощник, который поможет быстро и удобно записаться на сеанс к психологу.\n\n"
-        "<b>Готовы начать?</b> ",
+        "<b>📝 Готовы начать?</b> ",
         parse_mode='HTML',
         reply_markup=markup
     )
@@ -115,7 +115,7 @@ def ask_place(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("Таджикистан", "Страны СНГ", "Другое")
 
-    bot.send_message(message.chat.id, "✅ Отлично! \n 🌍 Выберите, пожалуйста, откуда вы:", reply_markup=markup)
+    bot.send_message(message.chat.id, "✅ Отлично! \n🌍 Выберите, пожалуйста, откуда вы:", reply_markup=markup)
 
 
 # === ГЛАВНЫЙ ХЕНДЛЕР ===
@@ -195,7 +195,7 @@ def ask_therapy(chat_id, place):
     markup.add("Курс личностного роста")
     markup.add("Я не знаю, что есть что")
 
-    bot.send_message(chat_id, "Выберите услугу, которая вам подходит 🎯:", reply_markup=markup)
+    bot.send_message(chat_id, "🎯 Выберите услугу, которая вам подходит:", reply_markup=markup)
 
 
 def show_offline_therapies(chat_id):
@@ -306,7 +306,7 @@ def handle_contact(message):
 
     bot.send_message(
         message.chat.id,
-        "Спасибо! 🙌\nМы получили вашу заявку и скоро свяжемся с вами. Хорошего дня! 🌿",
+        "🙌 Спасибо! \n 🌿Мы получили вашу заявку и скоро свяжемся с вами. Хорошего дня! ",
         parse_mode='HTML',
         reply_markup=types.ReplyKeyboardRemove()
     )
