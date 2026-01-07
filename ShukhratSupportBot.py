@@ -55,22 +55,11 @@ PRICES = {
 
 user_data = {}
 
-def get_back_markup():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add("Назад")
-    return markup
-
-def get_restart_markup():
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
-    markup.add("Начать сначала")
-    return markup
-
 def ask_use_buttons_and_repeat(message, repeat_func, *args):
     bot.send_message(message.chat.id, "Пожалуйста, используйте кнопки ниже, чтобы я не ошибся 😊")
     repeat_func(message.chat.id, *args)
 
 def get_therapy_description(place):
-    # Теперь описание зависит только от региона (офлайн отдельно обрабатывается)
     if place == "Таджикистан":
         return (
             "<b>💻 Онлайн-услуги — что и для кого + цены:</b>\n\n"
@@ -192,6 +181,7 @@ def ask_place(message):
     user_data[user_id] = {}
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("Таджикистан", "Страны СНГ", "Другое")
+    markup.row("Назад")  # Назад вместе с основными кнопками
     bot.send_message(message.chat.id, "✅ Отлично! \n🌍 Выберите, пожалуйста, откуда вы:", reply_markup=markup)
 
 # Обработчик кнопки "Назад"
@@ -212,16 +202,12 @@ def handle_back(message):
             ask_therapy(chat_id, state['place'])
     elif 'mode' in state:
         del state['mode']
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-        markup.add("Онлайн", "Офлайн (живая встреча)")
-        bot.send_message(chat_id, "Какой формат вам удобнее? ⚡\n"
-                                 "Онлайн — удобно из любой точки мира.\n"
-                                 "Офлайн — живая, тёплая атмосфера.", reply_markup=markup)
+        show_mode(chat_id)
     elif 'place' in state:
         del state['place']
-        ask_place(message)
+        start(message)  # Возврат к самому началу (вопрос "Готовы начать?")
 
-# Обработчик "Начать сначала"
+# Обработчик "Начать сначала" (только на этапе контакта)
 @bot.message_handler(func=lambda m: m.text == "Начать сначала")
 def handle_restart(message):
     user_id = message.from_user.id
@@ -245,15 +231,7 @@ def handle_any(message):
         if text in ["Таджикистан", "Страны СНГ", "Другое"]:
             state['place'] = "СНГ" if text == "Страны СНГ" else text
             if text == "Таджикистан":
-                markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-                markup.add("Онлайн", "Офлайн (живая встреча)")
-                bot.send_message(
-                    chat_id,
-                    "Какой формат вам удобнее? ⚡\n"
-                    "Онлайн — удобно из любой точки мира.\n"
-                    "Офлайн — живая, тёплая атмосфера.",
-                    reply_markup=markup
-                )
+                show_mode(chat_id)
             else:
                 ask_therapy(chat_id, state['place'])
         else:
@@ -298,23 +276,24 @@ def handle_any(message):
 def show_mode(chat_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("Онлайн", "Офлайн (живая встреча)")
+    markup.row("Назад")
     bot.send_message(chat_id, "Какой формат вам удобнее? ⚡\n"
                              "Онлайн — удобно из любой точки мира.\n"
                              "Офлайн — живая, тёплая атмосфера.", reply_markup=markup)
 
 def ask_therapy(chat_id, place):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
     markup.add("Онлайн консультация (психология)")
     markup.add("Бизнес-консультация (онлайн)")
     markup.add("Регрессивный гипноз (онлайн)")
     markup.add("Курс личностного роста")
     markup.add("Урок медитации")
     markup.add("Я не знаю, что есть что")
+    markup.row("Назад")
     bot.send_message(chat_id, "🎯 Выберите услугу, которая вам подходит:", reply_markup=markup)
-    bot.send_message(chat_id, "Если ошиблись — нажмите 'Назад' ниже 👇", reply_markup=get_back_markup())
 
 def show_offline_therapies(chat_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False)
     markup.add("Офлайн: индивидуальный сеанс")
     markup.add("Офлайн: семейный сеанс (2 чел)")
     markup.add("Офлайн: сеанс на дому")
@@ -322,8 +301,8 @@ def show_offline_therapies(chat_id):
     markup.add("Бизнес-консультация офлайн (до 3 чел)")
     markup.add("Групповой тренинг")
     markup.add("Я не знаю, что есть что")
+    markup.row("Назад")
     bot.send_message(chat_id, "🏡 Выберите офлайн-услугу :", reply_markup=markup)
-    bot.send_message(chat_id, "Если ошиблись — нажмите 'Назад' ниже 👇", reply_markup=get_back_markup())
 
 @bot.message_handler(func=lambda m: "Я не знаю, что есть что" in m.text)
 def send_descriptions(message):
@@ -336,7 +315,7 @@ def send_descriptions(message):
 
     bot.send_message(message.chat.id, get_therapy_description(place), parse_mode='HTML')
 
-    # После описания возвращаем к выбору услуги
+    # Возврат к выбору услуги с кнопкой "Назад"
     if user_data[user_id].get('mode') == "Офлайн (живая встреча)":
         show_offline_therapies(message.chat.id)
     else:
@@ -377,6 +356,7 @@ def handle_therapy(message):
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add(types.KeyboardButton("Отправить контакт", request_contact=True))
+    markup.row("Начать сначала")
 
     bot.send_message(
         message.chat.id,
@@ -385,11 +365,10 @@ def handle_therapy(message):
         f"🧩 Услуга: <b>{therapy_text}</b>\n"
         f"💰 Стоимость: <b>{price}</b>\n\n"
         f"☎️ Для завершения — отправьте ваш контакт ☎️\n\n"
-        "Если нужно изменить — нажмите 'Начать сначала' 👇",
+        "Если нужно изменить — нажмите 'Начать сначала'",
         parse_mode='HTML',
         reply_markup=markup
     )
-    bot.send_message(message.chat.id, "Используйте кнопки ниже:", reply_markup=get_restart_markup())
 
 @bot.message_handler(content_types=['contact'])
 def handle_contact(message):
